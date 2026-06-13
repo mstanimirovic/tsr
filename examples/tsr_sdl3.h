@@ -59,11 +59,7 @@ static int tsr_sdl3_init(tsr_sdl3_ctx *s, const char *title, int w, int h)
 static tsr_ctx tsr_sdl3_make_ctx(tsr_sdl3_ctx *s)
 {
     tsr_ctx ctx;
-    ctx.pixels     = (uint8_t *)s->pixels;
-    ctx.w          = s->w;
-    ctx.h          = s->h;
-    ctx.stride     = s->w * sizeof(uint32_t);
-    ctx.draw_color = 0;
+    tsr_ctx_init(&ctx, (uint8_t *)s->pixels, s->w, s->h, s->w * sizeof(uint32_t));
     return ctx;
 }
 

@@ -1,7 +1,37 @@
+/**
+ * @file tsr.h
+ * @brief Tiny Software Renderer – 2D software rasterizer for freestanding C99.
+ *
+ * @author Mladen Stanimirovic
+ * @version 0.1.0
+ * @date 2026-06-13
+ *
+ * @copyright Free for personal and commercial use without restriction.
+ *
+ * @details
+ * This single-header library provides immediate‑mode 2D rendering
+ * directly into a user‑supplied framebuffer. It targets embedded
+ * systems, OS kernels, and other environments without a standard
+ * C library or GPU. All geometry uses integer coordinates; colours
+ * are compile‑time selectable (RGBA8888 or RGB565).
+ *
+ * Usage:
+ * ~~~~~~{.c}
+ *   #define TSR_IMPLEMENTATION
+ *   #include "tsr.h"
+ *
+ *   tsr_ctx ctx;
+ *   tsr_ctx_init(&ctx, fb, 640, 480, 640 * 4);
+ *   tsr_set_color(&ctx, 0xFF0000FF);
+ *   tsr_draw_text(&ctx, 10, 10, "Hello", 1);
+ * ~~~~~~
+ */
+
 #ifndef TSR_H
 #define TSR_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #if !defined(TSR_COLOR_RGBA8888) && !defined(TSR_COLOR_RGB565)
     #define TSR_COLOR_RGBA8888
@@ -16,26 +46,67 @@
 #endif
 
 typedef struct {
-    uint8_t *pixels;
-    int32_t w, h;
-    int32_t stride;
-    tsr_pixel draw_color;
+    uint8_t *pixels;      /* Pointer to the frame buffer memory */
+    int32_t w, h;         /* Width and height of the render target */
+    int32_t stride;       /* Row stride in bytes (may exceed w * TSR_PIXEL_SIZE) */
+    tsr_pixel draw_color; /* Current foreground color for drawing */
 } tsr_ctx;
 
+/* Initializes the tsr context */
+void tsr_ctx_init(tsr_ctx *ctx, uint8_t *fb, int32_t w, int32_t h, int32_t stride);
+
+/* Draw a single pixel at (x, y) with bounds checking */
 void tsr_draw_pixel(tsr_ctx *ctx, int32_t x, int32_t y);
+
+/* Draw a single pixel at (x, y) without bounds checking */
 void tsr_draw_pixel_unsafe(tsr_ctx *ctx, int32_t x, int32_t y);
+
+/* Draw a line from (x0, y0) to (x1, y1) using Bresenham's algorithm */
 void tsr_draw_line(tsr_ctx *ctx, int32_t x0, int32_t y0, int32_t x1, int32_t y1);
+
+/* Render a single ASCII character at (x, y) with the specified scale factor */
 void tsr_draw_char(tsr_ctx *ctx, int32_t x, int32_t y, char c, int32_t scale);
+
+/* Render a single ASCII character with explicit background color */
 void tsr_draw_char_bg(tsr_ctx *ctx, int32_t x, int32_t y, char c, tsr_pixel bg, int32_t scale);
+
+/* Render a null-terminated ASCII string at (x, y) */
 void tsr_draw_text(tsr_ctx *ctx, int32_t x, int32_t y, const char *text, int32_t scale);
+
+/* Render a null-terminated ASCII string with explicit background color */
 void tsr_draw_text_bg(tsr_ctx *ctx, int32_t x, int32_t y, const char *text, tsr_pixel bg, int32_t scale);
+
+/* Update the current drawing color for subsequent operations */
 void tsr_set_color(tsr_ctx *ctx, tsr_pixel color);
+
+/* Fill the entire render target with the current drawing color */
 void tsr_clear(tsr_ctx *ctx);
+
+/* Draw an empty rectangle outline at (x, y) with width w and height h */
 void tsr_draw_rect(tsr_ctx *ctx, int32_t x, int32_t y, int32_t w, int32_t h);
+
+/* Draw a filled rectangle at (x, y) with width w and height h */
 void tsr_fill_rect(tsr_ctx *ctx, int32_t x, int32_t y, int32_t w, int32_t h);
 
 #ifdef TSR_IMPLEMENTATION
+
 static inline int32_t tsr_abs(int32_t x) { return x < 0 ? -x : x; }
+
+/*
+ * Built-in Font: 8x8 Bitmap
+ * --------------------------
+ * A monospace bitmap font containing all printable ASCII characters
+ * from space (0x20) to tilde (0x7E), totaling 95 glyphs.
+ *
+ * Each character is represented as 8 bytes, where each bit in a byte
+ * corresponds to a pixel in that row. Bit value 1 = foreground pixel,
+ * bit value 0 = background (transparent or background color).
+ *
+ * Font metrics:
+ *   Width:  8 pixels per character
+ *   Height: 8 pixels per character
+ *   Encoding: ASCII printable range (0x20-0x7E)
+ */
 static const uint8_t tsr_font8x8[95][8] = {
     /* 0x20  ' ' */ {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},
     /* 0x21  '!' */ {0x18,0x3C,0x3C,0x18,0x18,0x00,0x18,0x00},
@@ -136,6 +207,14 @@ static const uint8_t tsr_font8x8[95][8] = {
 
 #define TSR_FONT_WIDTH  8
 #define TSR_FONT_HEIGHT 8
+
+void tsr_ctx_init(tsr_ctx *ctx, uint8_t *fb, int32_t w, int32_t h, int32_t stride) {
+    ctx->pixels = fb;
+    ctx->w = w;
+    ctx->h = h;
+    ctx->stride = stride;
+    ctx->draw_color = 0;
+}
 
 void tsr_clear(tsr_ctx *ctx) {
     for (int32_t i = 0; i < ctx->h; i++) {
