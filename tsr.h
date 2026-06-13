@@ -1,6 +1,6 @@
 /**
  * @file tsr.h
- * @brief Tiny Software Renderer – 2D software rasterizer for freestanding C99.
+ * @brief Tiny Software Renderer - 2D software rasterizer for freestanding C99.
  *
  * @author Mladen Stanimirovic
  * @version 0.1.0
